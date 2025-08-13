@@ -1,0 +1,89 @@
+{
+  "backtest_summary": {
+    "timestamp": "2025-08-13T09:57:30.110911",
+    "total_backtests": 1,
+    "config": {
+      "benchmark_symbol": "SPY",
+      "commission_rate": 0.0005,
+      "enable_logging": true,
+      "fill_model": "realistic",
+      "initial_capital": 100000.0,
+      "max_order_size": 100,
+      "max_position_size": 1000,
+      "parallel_workers": 1,
+      "risk_limit": 10000.0,
+      "save_snapshots": false,
+      "slippage_bps": 1.0,
+      "strategy_params": {
+        "market_making": {
+          "spread_bps": 10.0,
+          "order_size": 100,
+          "max_inventory": 500
+        },
+        "liquidity_taking": {
+          "momentum_threshold": 0.001,
+          "order_size": 200,
+          "max_positions": 5
+        }
+      },
+      "strategy_type": "market_making",
+      "tick_size": 0.01
+    },
+    "total_pnl": 5239.541015625,
+    "total_trades": 453,
+    "avg_fill_rate": 0.2
+  },
+  "results": [
+    {
+      "symbol": "AAPL",
+      "start_time": "2024-01-01 09:30:00",
+      "end_time": "2024-01-01 09:46:39",
+      "duration_seconds": 999.0,
+      "total_pnl": 5239.541015625,
+      "total_volume": 40000,
+      "total_trades": 453,
+      "win_rate": 0.9911111111111112,
+      "sharpe_ratio": 0.0,
+      "max_drawdown": 4.0008544921875,
+      "fill_rate": 0.2,
+      "avg_slippage": 0.0,
+      "avg_latency_us": 0.0,
+      "market_returns": 0.0,
+      "strategy_returns": 0.0,
+      "alpha": 0.0,
+      "beta": 0.0,
+      "metadata": {
+        "file_path": "data\\aapl_data.csv",
+        "processing_time_ms": 960.8830999986822,
+        "strategy_type": "market_making",
+        "config": {
+          "benchmark_symbol": "SPY",
+          "commission_rate": 0.0005,
+          "enable_logging": true,
+          "fill_model": "realistic",
+          "initial_capital": 100000.0,
+          "max_order_size": 100,
+          "max_position_size": 1000,
+          "parallel_workers": 1,
+          "risk_limit": 10000.0,
+          "save_snapshots": false,
+          "slippage_bps": 1.0,
+          "strategy_params": {
+            "market_making": {
+              "spread_bps": 10.0,
+              "order_size": 100,
+              "max_inventory": 500
+            },
+            "liquidity_taking": {
+              "momentum_threshold": 0.001,
+              "order_size": 200,
+              "max_positions": 5
+            }
+          },
+          "strategy_type": "market_making",
+          "tick_size": 0.01
+        }
+      }
+    }
+  ]
+}

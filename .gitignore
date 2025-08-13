@@ -1,0 +1,131 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Data files (keep structure but ignore large datasets)
+data/large_*.csv
+data/*.parquet
+data/market_data/
+data/backups/
+data/temp/
+
+# Model artifacts
+models/saved/
+models/checkpoints/
+models/experiments/
+*.pkl
+*.joblib
+*.h5
+*.pth
+*.onnx
+
+# Configuration (keep templates)
+config/local_*.yaml
+config/production.yaml
+config/secrets.yaml
+
+# Performance results
+results/
+performance/
+profiling/
+
+# Temporary files
+.tmp/
+temp/
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+desktop.ini
+
+# Documentation build
+docs/_build/
+site/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis
+dump.rdb
+
+# Node.js (if any frontend components)
+node_modules/
+npm-debug.log*
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Backup files
+*.bak
+*.backup

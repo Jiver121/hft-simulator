@@ -1,0 +1,9 @@
+{
+  "websocket_feeds": [
+    "wss://stream.binance.com:9443/ws/btcusdt@trade",
+    "wss://ws-feed.exchange.coinbase.com"
+  ],
+  "backtest_data_path": "./data/",
+  "dashboard_port": 5000,
+  "network_expose": false
+}

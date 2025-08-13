@@ -1,0 +1,94 @@
+# Cloud-Native Requirements for HFT Simulator
+# This file extends the base requirements with cloud-native dependencies
+
+# Base requirements (include everything from requirements.txt)
+-r requirements.txt
+
+# Message Queue Systems
+aiokafka>=0.8.0
+aio-pika>=9.0.0
+redis[hiredis]>=5.0.0
+
+# Event Sourcing & CQRS
+asyncio-mqtt>=0.16.0
+aiofiles>=23.0.0
+
+# Distributed Systems
+asyncio>=3.4.3
+aioredis>=2.0.0
+
+# OpenTelemetry for Distributed Tracing
+opentelemetry-api>=1.15.0
+opentelemetry-sdk>=1.15.0
+opentelemetry-instrumentation>=0.36b0
+opentelemetry-instrumentation-asyncio>=0.36b0
+opentelemetry-instrumentation-redis>=0.36b0
+opentelemetry-instrumentation-requests>=0.36b0
+opentelemetry-instrumentation-sqlalchemy>=0.36b0
+opentelemetry-exporter-jaeger>=1.15.0
+opentelemetry-exporter-prometheus>=1.15.0
+
+# Service Discovery & Configuration
+consul-python>=1.1.0
+etcd3>=0.12.0
+
+# API Framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+gunicorn>=21.0.0
+eventlet>=0.33.0
+
+# Monitoring & Observability  
+prometheus-client>=0.17.0
+structlog>=23.0.0
+
+# Circuit Breaker & Resilience
+circuitbreaker>=1.4.0
+tenacity>=8.2.0
+aiohttp-retry>=2.8.0
+
+# Security
+cryptography>=41.0.0
+pyjwt[crypto]>=2.8.0
+passlib[bcrypt]>=1.7.4
+
+# Load Balancing & Service Mesh
+aiohttp>=3.8.0
+httpx>=0.24.0
+
+# Container & Orchestration Tools
+kubernetes>=27.2.0
+docker>=6.1.0
+
+# Data Serialization
+orjson>=3.9.0
+msgpack>=1.0.0
+avro-python3>=1.11.0
+
+# Async Database Drivers
+asyncpg>=0.28.0  # PostgreSQL
+aiomysql>=0.2.0  # MySQL
+motor>=3.2.0     # MongoDB
+
+# Stream Processing
+apache-beam[gcp]>=2.50.0
+confluent-kafka>=2.2.0
+
+# Caching
+aiocache>=0.12.0
+
+# Health Checks
+aiohttp-healthcheck>=1.0.0
+
+# Rate Limiting
+aioredis-rate-limit>=0.1.0
+slowapi>=0.1.9
+
+# WebSocket support for real-time features
+websockets>=11.0.0
+python-socketio>=5.8.0
+
+# Development & Testing in cloud environments
+pytest-asyncio>=0.21.0
+pytest-docker>=2.0.0
+testcontainers>=3.7.0

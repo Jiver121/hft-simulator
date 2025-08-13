@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: hft-system
+data:
+  redis.conf: |
+    # Redis configuration for HFT system
+    bind 0.0.0.0
+    port 6379
+    
+    # Memory settings
+    maxmemory 2gb
+    maxmemory-policy allkeys-lru
+    
+    # Persistence settings
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # Performance settings
+    tcp-keepalive 300
+    timeout 0
+    tcp-backlog 511
+    
+    # Logging
+    loglevel notice
+    
+    # Security
+    requirepass ""
+    
+    # Replication settings
+    replica-serve-stale-data yes
+    replica-read-only yes
+    
+    # Append only file
+    appendonly yes
+    appendfsync everysec
+    
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: hft-system
+  labels:
+    app: redis
+    component: database
+spec:
+  clusterIP: None  # Headless service for StatefulSet
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  namespace: hft-system
+  labels:
+    app: redis
+    component: database
+    role: master
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
+    role: master
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: hft-system
+  labels:
+    app: redis
+    component: database
+spec:
+  serviceName: redis-service
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: database
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        command:
+        - redis-server
+        - /etc/redis/redis.conf
+        volumeMounts:
+        - name: config
+          mountPath: /etc/redis
+        - name: data
+          mountPath: /data
+        env:
+        - name: REDIS_REPLICATION_MODE
+          value: master
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: redis-config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "fast-ssd"  # Use fast SSD storage class
+      resources:
+        requests:
+          storage: 10Gi

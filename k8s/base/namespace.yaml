@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hft-system
+  labels:
+    name: hft-system
+    environment: production
+    app.kubernetes.io/name: hft-simulator
+    app.kubernetes.io/version: "1.0.0"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hft-monitoring
+  labels:
+    name: hft-monitoring
+    environment: production
+    app.kubernetes.io/name: monitoring

@@ -1,0 +1,78 @@
+# Real-Time Trading System Dependencies
+# Additional requirements for live trading capabilities
+
+# WebSocket and HTTP clients
+websockets>=11.0.0
+aiohttp>=3.8.0
+requests>=2.31.0
+
+# Message queuing and streaming
+redis>=4.5.0
+aioredis>=2.0.0
+
+# Database connectivity
+asyncpg>=0.28.0
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+alembic>=1.11.0
+
+# Monitoring and metrics
+prometheus-client>=0.17.0
+psutil>=5.9.0
+
+# Security and encryption
+cryptography>=41.0.0
+pyjwt>=2.8.0
+
+# Configuration management
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# Networking and protocols
+uvloop>=0.17.0; platform_system != "Windows"  # High-performance event loop (Unix only)
+httpx>=0.24.0
+
+# Data serialization
+msgpack>=1.0.0
+orjson>=3.9.0  # Fast JSON serialization
+
+# Async utilities
+asyncio-mqtt>=0.13.0  # For MQTT data feeds
+aiokafka>=0.8.0  # For Kafka integration
+
+# Financial data providers
+alpha-vantage>=2.3.0  # Alpha Vantage API
+yfinance>=0.2.0  # Yahoo Finance (for testing)
+
+# Interactive Brokers API (optional)
+# ib-insync>=0.9.86  # Uncomment if using Interactive Brokers
+
+# Binance API (optional)
+python-binance>=1.0.17  # Uncomment if using Binance
+
+# Alpaca API
+alpaca-trade-api>=3.0.0
+
+# Performance profiling
+py-spy>=0.3.14  # Performance profiler
+memory-profiler>=0.61.0
+
+# Testing utilities for real-time components
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+pytest-timeout>=2.1.0
+
+# Development tools
+black>=23.7.0
+isort>=5.12.0
+mypy>=1.5.0
+pre-commit>=3.3.0
+
+# Production server
+gunicorn>=21.2.0; platform_system != "Windows"  # Not supported on Windows
+eventlet>=0.36.1
+
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.1.0
+mkdocs-mermaid2-plugin>=1.1.0

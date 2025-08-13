@@ -1,0 +1,515 @@
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hft-config
+  namespace: hft-system
+data:
+  redis_url: "redis://redis-master:6379"
+  kafka_bootstrap_servers: "kafka-service:9092"
+  log_level: "INFO"
+  environment: "production"
+
+---
+# Order Book Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orderbook-service
+  namespace: hft-system
+  labels:
+    app: orderbook-service
+    component: core
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: orderbook-service
+  template:
+    metadata:
+      labels:
+        app: orderbook-service
+        component: core
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: orderbook
+        image: hft-simulator/orderbook:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: redis_url
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: kafka_bootstrap_servers
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: log_level
+        - name: SERVICE_NAME
+          value: "orderbook-service"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderbook-service
+  namespace: hft-system
+  labels:
+    app: orderbook-service
+    component: core
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: orderbook-service
+
+---
+# Strategy Engine Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: strategy-service
+  namespace: hft-system
+  labels:
+    app: strategy-service
+    component: core
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: strategy-service
+  template:
+    metadata:
+      labels:
+        app: strategy-service
+        component: core
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: strategy
+        image: hft-simulator/strategy:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8001
+          name: http
+          protocol: TCP
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: redis_url
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: kafka_bootstrap_servers
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: log_level
+        - name: SERVICE_NAME
+          value: "strategy-service"
+        - name: ORDERBOOK_SERVICE_URL
+          value: "http://orderbook-service:8000"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "2Gi"
+            cpu: "1500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: strategy-service
+  namespace: hft-system
+  labels:
+    app: strategy-service
+    component: core
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  selector:
+    app: strategy-service
+
+---
+# Market Data Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marketdata-service
+  namespace: hft-system
+  labels:
+    app: marketdata-service
+    component: core
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: marketdata-service
+  template:
+    metadata:
+      labels:
+        app: marketdata-service
+        component: core
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: marketdata
+        image: hft-simulator/marketdata:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8002
+          name: http
+          protocol: TCP
+        - containerPort: 8003
+          name: websocket
+          protocol: TCP
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: redis_url
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: kafka_bootstrap_servers
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: log_level
+        - name: SERVICE_NAME
+          value: "marketdata-service"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8002
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: marketdata-service
+  namespace: hft-system
+  labels:
+    app: marketdata-service
+    component: core
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8002
+    targetPort: 8002
+    protocol: TCP
+    name: http
+  - port: 8003
+    targetPort: 8003
+    protocol: TCP
+    name: websocket
+  selector:
+    app: marketdata-service
+
+---
+# Dashboard Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-service
+  namespace: hft-system
+  labels:
+    app: dashboard-service
+    component: ui
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: dashboard-service
+  template:
+    metadata:
+      labels:
+        app: dashboard-service
+        component: ui
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: dashboard
+        image: hft-simulator/dashboard:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: redis_url
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: kafka_bootstrap_servers
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: hft-config
+              key: log_level
+        - name: SERVICE_NAME
+          value: "dashboard-service"
+        - name: ORDERBOOK_SERVICE_URL
+          value: "http://orderbook-service:8000"
+        - name: STRATEGY_SERVICE_URL
+          value: "http://strategy-service:8001"
+        - name: MARKETDATA_SERVICE_URL
+          value: "http://marketdata-service:8002"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: hft-system
+  labels:
+    app: dashboard-service
+    component: ui
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: dashboard-service
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hft-ingress
+  namespace: hft-system
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/websocket-services: "marketdata-service"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: hft.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 80
+      - path: /api/orderbook
+        pathType: Prefix
+        backend:
+          service:
+            name: orderbook-service
+            port:
+              number: 8000
+      - path: /api/strategy
+        pathType: Prefix
+        backend:
+          service:
+            name: strategy-service
+            port:
+              number: 8001
+      - path: /api/marketdata
+        pathType: Prefix
+        backend:
+          service:
+            name: marketdata-service
+            port:
+              number: 8002
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: marketdata-service
+            port:
+              number: 8003

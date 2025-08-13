@@ -1,0 +1,86 @@
+{
+  "name": "Momentum Breakout Strategy",
+  "description": "Momentum strategy template for trend-following trades",
+  "strategy_type": "momentum",
+  "enabled": true,
+  
+  "backtest_settings": {
+    "initial_capital": 100000.0,
+    "commission_rate": 0.001,
+    "slippage_bps": 2.0,
+    "max_position_size": 2000,
+    "max_order_size": 500,
+    "tick_size": 0.01
+  },
+  
+  "signal_detection": {
+    "momentum_threshold": 0.003,
+    "signal_decay_factor": 0.92,
+    "min_signal_strength": 0.4,
+    "max_signal_age_seconds": 180,
+    "trend_confirmation": true,
+    "multi_timeframe": true
+  },
+  
+  "lookback_parameters": {
+    "lookback_window": 50,
+    "price_change_window": 10,
+    "volume_confirmation": true,
+    "min_volume_multiple": 2.0,
+    "relative_volume_threshold": 1.5
+  },
+  
+  "position_sizing": {
+    "base_order_size": 300,
+    "max_order_size": 1500,
+    "max_total_positions": 8,
+    "position_size_factor": 0.6,
+    "adaptive_sizing": true,
+    "kelly_criterion": false
+  },
+  
+  "risk_management": {
+    "stop_loss_pct": 0.015,
+    "take_profit_pct": 0.06,
+    "max_holding_time_seconds": 7200,
+    "trailing_stop": true,
+    "trailing_stop_distance": 0.008,
+    "breakeven_stop": true
+  },
+  
+  "execution_settings": {
+    "entry_aggression": 0.8,
+    "exit_aggression": 0.95,
+    "partial_exit_threshold": 0.4,
+    "slicing_enabled": true,
+    "time_weighted_execution": false
+  },
+  
+  "filters": {
+    "volatility_filter": true,
+    "max_volatility_threshold": 0.08,
+    "min_volatility_threshold": 0.01,
+    "min_liquidity": 2000,
+    "market_hours_only": true,
+    "earnings_filter": true
+  },
+  
+  "technical_indicators": {
+    "use_rsi": true,
+    "rsi_period": 14,
+    "rsi_overbought": 70,
+    "rsi_oversold": 30,
+    "use_macd": true,
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9
+  },
+  
+  "market_conditions": {
+    "min_market_hours": "09:45:00",
+    "max_market_hours": "15:45:00",
+    "avoid_open_close": true,
+    "trend_strength_threshold": 0.5,
+    "market_regime_filter": true
+  }
+}

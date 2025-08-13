@@ -1,0 +1,38 @@
+{
+  "strategy_type": "momentum",
+  "initial_capital": 100000.0,
+  "commission_rate": 0.001,
+  "slippage_bps": 2.0,
+  "max_position_size": 2000,
+  "max_order_size": 500,
+  "risk_limit": 10000.0,
+  "tick_size": 0.01,
+  "fill_model": "realistic",
+  "enable_logging": true,
+  "save_snapshots": false,
+  "parallel_workers": 1,
+  "benchmark_symbol": "SPY",
+  "strategy_params": {
+    "momentum": {
+      "momentum_threshold": 0.0015,
+      "lookback_window": 50,
+      "order_size": 200,
+      "max_positions": 8,
+      "signal_decay": 0.92,
+      "min_signal_strength": 0.35,
+      "stop_loss": 0.025,
+      "take_profit": 0.045
+    }
+  },
+  "max_daily_loss": null,
+  "max_drawdown": null,
+  "position_limit_pct": null,
+  "latency_model": "fixed",
+  "min_latency_ms": 1.0,
+  "max_latency_ms": 5.0,
+  "market_impact_model": "linear",
+  "data_frequency": "tick",
+  "start_date": null,
+  "end_date": null,
+  "symbols": null
+}

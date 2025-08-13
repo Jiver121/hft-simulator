@@ -1,0 +1,50 @@
+{
+  "strategy_type": "multi_strategy",
+  "initial_capital": 200000.0,
+  "commission_rate": 0.0005,
+  "slippage_bps": 1.0,
+  "max_position_size": 1000,
+  "max_order_size": 100,
+  "risk_limit": 10000.0,
+  "tick_size": 0.01,
+  "fill_model": "realistic",
+  "enable_logging": true,
+  "save_snapshots": false,
+  "parallel_workers": 1,
+  "benchmark_symbol": "SPY",
+  "strategy_params": {
+    "market_making": {
+      "spread_bps": 8.0,
+      "order_size": 100,
+      "max_inventory": 500,
+      "inventory_target": 0,
+      "risk_aversion": 0.12,
+      "min_spread": 0.01,
+      "max_spread": 0.04,
+      "quote_size": 100,
+      "adverse_selection_threshold": 0.75,
+      "enable_skewing": true
+    },
+    "momentum": {
+      "momentum_threshold": 0.0015,
+      "lookback_window": 50,
+      "order_size": 200,
+      "max_positions": 8,
+      "signal_decay": 0.92,
+      "min_signal_strength": 0.35,
+      "stop_loss": 0.025,
+      "take_profit": 0.045
+    }
+  },
+  "max_daily_loss": null,
+  "max_drawdown": null,
+  "position_limit_pct": null,
+  "latency_model": "fixed",
+  "min_latency_ms": 1.0,
+  "max_latency_ms": 5.0,
+  "market_impact_model": "linear",
+  "data_frequency": "tick",
+  "start_date": null,
+  "end_date": null,
+  "symbols": null
+}

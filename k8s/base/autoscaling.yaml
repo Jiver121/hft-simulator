@@ -1,0 +1,462 @@
+# Horizontal Pod Autoscaler for Order Book Service
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: orderbook-hpa
+  namespace: hft-system
+  labels:
+    app: orderbook-service
+    component: core
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: orderbook-service
+  minReplicas: 3
+  maxReplicas: 20
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+  - type: Pods
+    pods:
+      metric:
+        name: order_processing_latency_ms
+      target:
+        type: AverageValue
+        averageValue: "50"
+
+---
+# HPA for Strategy Service
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: strategy-hpa
+  namespace: hft-system
+  labels:
+    app: strategy-service
+    component: core
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: strategy-service
+  minReplicas: 2
+  maxReplicas: 10
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+  - type: Pods
+    pods:
+      metric:
+        name: strategy_signals_per_second
+      target:
+        type: AverageValue
+        averageValue: "100"
+
+---
+# HPA for Market Data Service
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: marketdata-hpa
+  namespace: hft-system
+  labels:
+    app: marketdata-service
+    component: core
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: marketdata-service
+  minReplicas: 2
+  maxReplicas: 15
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 30
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 3
+        periodSeconds: 15
+      selectPolicy: Max
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 65
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Pods
+    pods:
+      metric:
+        name: websocket_connections
+      target:
+        type: AverageValue
+        averageValue: "1000"
+  - type: Pods
+    pods:
+      metric:
+        name: market_data_throughput_mb_per_second
+      target:
+        type: AverageValue
+        averageValue: "10"
+
+---
+# Vertical Pod Autoscaler for Redis
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: redis-vpa
+  namespace: hft-system
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: redis
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: redis
+      minAllowed:
+        cpu: 100m
+        memory: 256Mi
+      maxAllowed:
+        cpu: "2"
+        memory: 4Gi
+      controlledResources: ["cpu", "memory"]
+
+---
+# Custom Resource Definitions for Custom Metrics
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: hft-services
+  namespace: hft-system
+  labels:
+    app: hft-simulator
+spec:
+  selector:
+    matchLabels:
+      component: core
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+    scrapeTimeout: 10s
+
+---
+# PrometheusRule for custom alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hft-alerts
+  namespace: hft-system
+  labels:
+    app: hft-simulator
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: hft-trading.rules
+    interval: 15s
+    rules:
+    - alert: OrderProcessingLatencyHigh
+      expr: histogram_quantile(0.95, rate(order_processing_duration_seconds_bucket[5m])) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+        component: orderbook
+      annotations:
+        summary: "High order processing latency"
+        description: "95th percentile order processing latency is {{ $value }}s"
+
+    - alert: OrderBookServiceDown
+      expr: up{job="orderbook-service"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: orderbook
+      annotations:
+        summary: "Order Book service is down"
+        description: "Order Book service has been down for more than 1 minute"
+
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate detected"
+        description: "Error rate is {{ $value }} errors per second"
+
+    - alert: KafkaConsumerLag
+      expr: kafka_consumer_lag > 1000
+      for: 5m
+      labels:
+        severity: warning
+        component: messaging
+      annotations:
+        summary: "Kafka consumer lag is high"
+        description: "Kafka consumer lag is {{ $value }} messages"
+
+    - alert: RedisMemoryUsageHigh
+      expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        component: database
+      annotations:
+        summary: "Redis memory usage is high"
+        description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
+
+    - alert: TradingVolumeSpike
+      expr: rate(trades_executed_total[5m]) > 1000
+      for: 2m
+      labels:
+        severity: info
+        component: trading
+      annotations:
+        summary: "High trading volume detected"
+        description: "Trading volume is {{ $value }} trades per second"
+
+---
+# Pod Disruption Budget for Order Book Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: orderbook-pdb
+  namespace: hft-system
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: orderbook-service
+
+---
+# Pod Disruption Budget for Strategy Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: strategy-pdb
+  namespace: hft-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: strategy-service
+
+---
+# Pod Disruption Budget for Market Data Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: marketdata-pdb
+  namespace: hft-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: marketdata-service
+
+---
+# KEDA ScaledObject for Kafka-based scaling
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: orderbook-kafka-scaler
+  namespace: hft-system
+spec:
+  scaleTargetRef:
+    name: orderbook-service
+  pollingInterval: 10
+  cooldownPeriod: 60
+  minReplicaCount: 3
+  maxReplicaCount: 20
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: kafka-service:9092
+      consumerGroup: orderbook-consumer-group
+      topic: order-requests
+      lagThreshold: '50'
+      offsetResetPolicy: earliest
+
+---
+# KEDA ScaledObject for Redis-based scaling
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: strategy-redis-scaler
+  namespace: hft-system
+spec:
+  scaleTargetRef:
+    name: strategy-service
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  triggers:
+  - type: redis
+    metadata:
+      address: redis-master:6379
+      listName: strategy_queue
+      listLength: '20'
+
+---
+# Network Policy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hft-network-policy
+  namespace: hft-system
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: hft-system
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8001
+    - protocol: TCP
+      port: 8002
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: hft-system
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6379
+    - protocol: TCP
+      port: 9092
+
+---
+# Priority Class for critical HFT components
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: hft-high-priority
+value: 1000
+globalDefault: false
+description: "High priority class for critical HFT components"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: hft-medium-priority
+value: 500
+globalDefault: false
+description: "Medium priority class for HFT support components"

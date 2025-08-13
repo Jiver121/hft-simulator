@@ -1,0 +1,330 @@
+version: '3.8'
+
+networks:
+  hft-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redis-data:
+    driver: local
+  kafka-data:
+    driver: local
+  zookeeper-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+services:
+  # Infrastructure Services
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    hostname: zookeeper
+    container_name: hft-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SERVER_ID: 1
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+    networks:
+      - hft-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka
+    container_name: hft-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_COMPRESSION_TYPE: snappy
+      KAFKA_LOG_CLEANUP_POLICY: compact
+      KAFKA_LOG_RETENTION_HOURS: 24
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - hft-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    hostname: redis
+    container_name: hft-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - hft-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # HFT Application Services
+  orderbook-service:
+    build:
+      context: ..
+      dockerfile: docker/services/Dockerfile.orderbook
+    hostname: orderbook-service
+    container_name: hft-orderbook
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_URL: redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOG_LEVEL: INFO
+      SERVICE_NAME: orderbook-service
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - hft-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  strategy-service:
+    build:
+      context: ..
+      dockerfile: docker/services/Dockerfile.strategy
+    hostname: strategy-service
+    container_name: hft-strategy
+    ports:
+      - "8001:8001"
+    environment:
+      REDIS_URL: redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOG_LEVEL: INFO
+      SERVICE_NAME: strategy-service
+      ORDERBOOK_SERVICE_URL: http://orderbook-service:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      orderbook-service:
+        condition: service_healthy
+    networks:
+      - hft-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  marketdata-service:
+    build:
+      context: ..
+      dockerfile: docker/services/Dockerfile.marketdata
+    hostname: marketdata-service
+    container_name: hft-marketdata
+    ports:
+      - "8002:8002"
+      - "8003:8003"
+    environment:
+      REDIS_URL: redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOG_LEVEL: INFO
+      SERVICE_NAME: marketdata-service
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - hft-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  dashboard-service:
+    build:
+      context: ..
+      dockerfile: docker/services/Dockerfile.dashboard
+    hostname: dashboard-service
+    container_name: hft-dashboard
+    ports:
+      - "8080:8080"
+    environment:
+      REDIS_URL: redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOG_LEVEL: INFO
+      SERVICE_NAME: dashboard-service
+      ORDERBOOK_SERVICE_URL: http://orderbook-service:8000
+      STRATEGY_SERVICE_URL: http://strategy-service:8001
+      MARKETDATA_SERVICE_URL: http://marketdata-service:8002
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      orderbook-service:
+        condition: service_healthy
+      strategy-service:
+        condition: service_healthy
+      marketdata-service:
+        condition: service_healthy
+    networks:
+      - hft-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    hostname: prometheus
+    container_name: hft-prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - hft-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    hostname: grafana
+    container_name: hft-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - hft-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    hostname: jaeger
+    container_name: hft-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - hft-network
+    restart: unless-stopped
+
+  # Load Testing Service
+  k6:
+    image: grafana/k6:latest
+    hostname: k6
+    container_name: hft-k6
+    volumes:
+      - ../tests/load:/scripts
+    networks:
+      - hft-network
+    profiles:
+      - testing
+    command: run /scripts/load-test.js
+
+  # Chaos Engineering
+  chaos-monkey:
+    image: quay.io/linki/chaoskube:v0.21.0
+    hostname: chaos-monkey
+    container_name: hft-chaos
+    networks:
+      - hft-network
+    profiles:
+      - chaos
+    command:
+      - --interval=10m
+      - --dry-run=false
+      - --annotation-selector=chaos.alpha.kubernetes.io/enabled=true

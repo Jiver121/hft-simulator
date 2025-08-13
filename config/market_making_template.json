@@ -1,0 +1,67 @@
+{
+  "name": "Conservative Market Making",
+  "description": "Conservative market making strategy template with tight risk controls",
+  "strategy_type": "market_making",
+  "enabled": true,
+  
+  "backtest_settings": {
+    "initial_capital": 100000.0,
+    "commission_rate": 0.0005,
+    "slippage_bps": 1.0,
+    "max_position_size": 1000,
+    "max_order_size": 100,
+    "tick_size": 0.01
+  },
+  
+  "spread_management": {
+    "target_spread_bps": 8.0,
+    "min_spread_bps": 4.0,
+    "max_spread_bps": 30.0,
+    "spread_adjustment_factor": 0.05,
+    "dynamic_spread": true,
+    "volatility_multiplier": 1.5
+  },
+  
+  "order_management": {
+    "base_order_size": 100,
+    "max_order_size": 500,
+    "quote_refresh_rate_ms": 250,
+    "max_quote_levels": 2,
+    "quote_size_increment": 25,
+    "cancel_on_fill": true
+  },
+  
+  "inventory_management": {
+    "max_inventory_abs": 750,
+    "inventory_target": 0,
+    "inventory_penalty_factor": 0.002,
+    "enable_lean": true,
+    "lean_factor": 0.4,
+    "inventory_skew_threshold": 0.3
+  },
+  
+  "risk_controls": {
+    "risk_aversion": 0.15,
+    "max_position_size": 1000,
+    "position_limit_factor": 0.7,
+    "adverse_selection_threshold": 0.6,
+    "market_impact_threshold": 0.001,
+    "max_daily_trades": 1000
+  },
+  
+  "performance_settings": {
+    "enable_skewing": true,
+    "skew_factor": 0.4,
+    "volatility_adjustment": true,
+    "min_profitability_bps": 3.0,
+    "performance_decay_factor": 0.99
+  },
+  
+  "market_conditions": {
+    "min_market_hours": "09:30:00",
+    "max_market_hours": "16:00:00",
+    "halt_on_news": true,
+    "volatility_threshold": 0.03,
+    "liquidity_threshold": 1000
+  }
+}

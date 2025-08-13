@@ -1,0 +1,176 @@
+# Strategy Configuration File for HFT Simulator
+# This file contains default parameters for different trading strategies
+
+# Market Making Strategy Configuration
+market_making:
+  # Spread Management
+  min_spread: 0.01          # Minimum bid-ask spread (1 cent)
+  target_spread: 0.02       # Target spread to maintain
+  max_spread: 0.05          # Stop quoting if spread exceeds this
+  
+  # Inventory Management
+  max_inventory: 500        # Maximum position size
+  inventory_target: 0       # Target inventory (neutral position)
+  inventory_penalty: 0.001  # Cost per unit of inventory deviation
+  
+  # Quote Parameters
+  quote_size: 100           # Default order size
+  max_quote_levels: 3       # Number of price levels to quote
+  quote_refresh_rate: 100   # Milliseconds between quote updates
+  
+  # Risk Controls
+  adverse_selection_threshold: 0.1  # Stop if hit rate > 10%
+  max_quote_imbalance: 0.3         # Max order book imbalance to tolerate
+  
+  # Position Sizing
+  base_order_size: 100      # Base order size
+  size_multiplier: 1.0      # Multiplier based on volatility
+  max_order_size: 1000      # Maximum single order size
+
+# Liquidity Taking Strategy Configuration
+liquidity_taking:
+  # Signal Parameters
+  signal_threshold: 0.001   # Minimum signal strength to act
+  signal_decay: 0.95        # How quickly signals decay
+  lookback_window: 100      # Ticks to look back for signals
+  
+  # Execution Parameters
+  aggression_level: 0.5     # 0=passive, 1=aggressive
+  max_market_impact: 0.002  # Maximum acceptable market impact
+  participation_rate: 0.1   # Max % of volume to consume
+  
+  # Timing Controls
+  execution_delay: 10       # Milliseconds delay before execution
+  max_execution_time: 1000  # Max milliseconds to complete order
+  
+  # Size Management
+  min_liquidity_threshold: 1000  # Minimum liquidity required
+  size_scaling_factor: 0.5       # Scale size based on signal strength
+
+# Risk Management (Applied to All Strategies)
+risk_management:
+  # Position Limits
+  max_position_size: 1000   # Maximum absolute position
+  max_daily_loss: 10000.0   # Maximum daily loss ($)
+  max_drawdown: 0.05        # Maximum drawdown (5%)
+  
+  # Stop Loss Parameters
+  enable_stop_loss: true
+  stop_loss_threshold: 0.02  # 2% stop loss
+  trailing_stop: true
+  trailing_stop_distance: 0.01  # 1% trailing distance
+  
+  # Time-based Controls
+  max_holding_period: 3600   # Maximum holding period (seconds)
+  end_of_day_flatten: true   # Flatten positions at end of day
+  
+  # Volatility Controls
+  volatility_lookback: 252   # Days for volatility calculation
+  max_volatility_multiple: 3.0  # Max position size as multiple of volatility
+
+# Performance Tracking
+performance:
+  # Metrics Calculation
+  calculate_real_time: true
+  update_frequency: 1000    # Milliseconds
+  
+  # Risk Metrics
+  var_confidence: 0.95      # VaR confidence level
+  var_window: 252           # Trading days for VaR
+  
+  # Benchmark Comparison
+  benchmark_symbol: "SPY"   # Benchmark for comparison
+  risk_free_rate: 0.02      # Annual risk-free rate (2%)
+  
+  # Reporting
+  generate_daily_reports: true
+  save_trade_log: true
+  export_metrics: true
+
+# Data Processing
+data_processing:
+  # Memory Management
+  chunk_size: 100000        # Rows per processing chunk
+  max_memory_usage: 0.8     # Max memory usage (80%)
+  
+  # Data Validation
+  validate_data: true
+  drop_invalid_rows: true
+  fill_missing_values: false
+  
+  # Performance Optimization
+  use_numba: true           # Enable Numba JIT compilation
+  parallel_processing: true  # Use multiple cores
+  cache_results: true       # Cache intermediate results
+
+# Visualization Settings
+visualization:
+  # Plot Configuration
+  figure_size: [12, 8]      # Default figure size
+  dpi: 100                  # Display DPI
+  style: "seaborn-v0_8"     # Plot style
+  
+  # Interactive Features
+  enable_interactive: true
+  auto_refresh: true
+  refresh_rate: 1000        # Milliseconds
+  
+  # Export Settings
+  export_format: "png"
+  export_dpi: 300
+  save_plots: true
+
+# Logging Configuration
+logging:
+  # Log Levels
+  console_level: "INFO"     # Console log level
+  file_level: "DEBUG"       # File log level
+  
+  # File Settings
+  log_file: "hft_simulator.log"
+  max_file_size: "10MB"
+  backup_count: 5
+  
+  # Component Logging
+  log_orders: true          # Log all orders
+  log_fills: true           # Log all fills
+  log_pnl: true            # Log P&L updates
+  log_performance: true     # Log performance metrics
+  log_book_updates: false   # Log order book updates (verbose)
+
+# Simulation Parameters
+simulation:
+  # Time Settings
+  start_time: "09:30:00"    # Market open time
+  end_time: "16:00:00"      # Market close time
+  timezone: "US/Eastern"    # Market timezone
+  
+  # Execution Settings
+  enable_slippage: true     # Model slippage
+  slippage_factor: 0.0001   # Slippage as fraction of price
+  
+  # Latency Simulation
+  min_latency: 10           # Minimum latency (microseconds)
+  max_latency: 100          # Maximum latency (microseconds)
+  average_latency: 50       # Average latency (microseconds)
+  
+  # Market Conditions
+  enable_market_impact: true
+  impact_decay_rate: 0.1    # How quickly impact decays
+  
+# Development Settings
+development:
+  # Debug Options
+  debug_mode: false
+  verbose_logging: false
+  save_intermediate_results: false
+  
+  # Testing
+  run_unit_tests: true
+  run_integration_tests: true
+  benchmark_performance: true
+  
+  # Profiling
+  enable_profiling: false
+  profile_memory: false
+  profile_cpu: false

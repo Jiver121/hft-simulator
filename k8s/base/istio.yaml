@@ -1,0 +1,442 @@
+# Enable Istio injection for the namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hft-system
+  labels:
+    istio-injection: enabled
+    name: hft-system
+
+---
+# Virtual Service for HFT routing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hft-virtualservice
+  namespace: hft-system
+spec:
+  hosts:
+  - hft.local
+  - hft-system.svc.cluster.local
+  gateways:
+  - hft-gateway
+  - mesh
+  http:
+  # Dashboard routes
+  - match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: dashboard-service
+        port:
+          number: 8080
+    headers:
+      request:
+        add:
+          x-forwarded-proto: https
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5ms
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+  
+  # Order Book API routes
+  - match:
+    - uri:
+        prefix: "/api/orderbook"
+    route:
+    - destination:
+        host: orderbook-service
+        port:
+          number: 8000
+    timeout: 5s
+    retries:
+      attempts: 5
+      perTryTimeout: 1s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+  
+  # Strategy API routes
+  - match:
+    - uri:
+        prefix: "/api/strategy"
+    route:
+    - destination:
+        host: strategy-service
+        port:
+          number: 8001
+    timeout: 10s
+    retries:
+      attempts: 3
+      perTryTimeout: 3s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+  
+  # Market Data API routes
+  - match:
+    - uri:
+        prefix: "/api/marketdata"
+    route:
+    - destination:
+        host: marketdata-service
+        port:
+          number: 8002
+    timeout: 5s
+    retries:
+      attempts: 3
+      perTryTimeout: 1s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+
+---
+# Gateway for external traffic
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: hft-gateway
+  namespace: hft-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - hft.local
+    - "*.hft.local"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: hft-tls-secret
+    hosts:
+    - hft.local
+    - "*.hft.local"
+
+---
+# Destination Rules for load balancing and circuit breaking
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: orderbook-destination
+  namespace: hft-system
+spec:
+  host: orderbook-service
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 5s
+        keepAlive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 60s
+        h2UpgradePolicy: UPGRADE
+    circuitBreaker:
+      consecutiveErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 30
+    outlierDetection:
+      consecutive5xxErrors: 3
+      consecutiveGatewayErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 30
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: strategy-destination
+  namespace: hft-system
+spec:
+  host: strategy-service
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 50
+        connectTimeout: 10s
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+        maxRequestsPerConnection: 5
+        maxRetries: 3
+        idleTimeout: 120s
+    circuitBreaker:
+      consecutiveErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: marketdata-destination
+  namespace: hft-system
+spec:
+  host: marketdata-service
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    connectionPool:
+      tcp:
+        maxConnections: 200
+        connectTimeout: 3s
+      http:
+        http1MaxPendingRequests: 200
+        http2MaxRequests: 2000
+        maxRequestsPerConnection: 20
+        maxRetries: 2
+        idleTimeout: 30s
+    circuitBreaker:
+      consecutiveErrors: 5
+      interval: 10s
+      baseEjectionTime: 15s
+      maxEjectionPercent: 30
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 10s
+      baseEjectionTime: 15s
+      maxEjectionPercent: 30
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: dashboard-destination
+  namespace: hft-system
+spec:
+  host: dashboard-service
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 5s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 2
+        idleTimeout: 300s
+    circuitBreaker:
+      consecutiveErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+
+---
+# Service Entries for external dependencies
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: binance-api
+  namespace: hft-system
+spec:
+  hosts:
+  - api.binance.com
+  - stream.binance.com
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  - number: 9443
+    name: wss
+    protocol: TLS
+  location: MESH_EXTERNAL
+  resolution: DNS
+
+---
+# Authorization policies
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: hft-authz-policy
+  namespace: hft-system
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/hft-system/sa/default"]
+    to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+  - from:
+    - source:
+        namespaces: ["istio-system"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/health", "/ready", "/metrics"]
+
+---
+# Peer Authentication - Enable mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: hft-peer-auth
+  namespace: hft-system
+spec:
+  mtls:
+    mode: STRICT
+
+---
+# Telemetry configuration
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: hft-metrics
+  namespace: hft-system
+spec:
+  metrics:
+  - providers:
+    - name: prometheus
+  - overrides:
+    - match:
+        metric: ALL_METRICS
+      tagOverrides:
+        request_protocol:
+          operation: UPSERT
+          value: "istio_request_protocol | 'unknown'"
+        response_code:
+          operation: UPSERT
+          value: "response.code | 0"
+  accessLogging:
+  - providers:
+    - name: otel
+
+---
+# Request Authentication for JWT tokens
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: hft-jwt-auth
+  namespace: hft-system
+spec:
+  selector:
+    matchLabels:
+      app: dashboard-service
+  jwtRules:
+  - issuer: "hft-system"
+    jwksUri: "https://hft.local/.well-known/jwks.json"
+    forwardOriginalToken: true
+    fromHeaders:
+    - name: Authorization
+      prefix: "Bearer "
+    fromParams:
+    - "access_token"
+
+---
+# Traffic splitting for canary deployments
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: orderbook-canary
+  namespace: hft-system
+spec:
+  hosts:
+  - orderbook-service
+  http:
+  - match:
+    - headers:
+        canary:
+          exact: "true"
+    route:
+    - destination:
+        host: orderbook-service
+        subset: v2
+      weight: 100
+  - route:
+    - destination:
+        host: orderbook-service
+        subset: v1
+      weight: 90
+    - destination:
+        host: orderbook-service
+        subset: v2
+      weight: 10
+
+---
+# Destination rule with subsets for canary
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: orderbook-canary-destination
+  namespace: hft-system
+spec:
+  host: orderbook-service
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+
+---
+# Fault injection for testing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hft-fault-injection
+  namespace: hft-system
+spec:
+  hosts:
+  - orderbook-service
+  http:
+  - match:
+    - headers:
+        test-fault:
+          exact: "delay"
+    fault:
+      delay:
+        percentage:
+          value: 100
+        fixedDelay: 1s
+    route:
+    - destination:
+        host: orderbook-service
+  - match:
+    - headers:
+        test-fault:
+          exact: "abort"
+    fault:
+      abort:
+        percentage:
+          value: 100
+        httpStatus: 503
+    route:
+    - destination:
+        host: orderbook-service
+  - route:
+    - destination:
+        host: orderbook-service
