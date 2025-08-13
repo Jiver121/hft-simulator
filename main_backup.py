@@ -1,38 +1,26 @@
 #!/usr/bin/env python3
 """
-HFT Simulator - Unified Main Interface
-======================================
+HFT Simulator - Main Entry Point for Batch Backtesting
 
-Complete high-frequency trading simulator with ALL advanced features:
-- Advanced ML-based trading strategies with 500+ features
-- Real-time data processing and enhanced feeds
-- Multi-asset trading capabilities
-- Professional risk management and analytics
-- Real-time dashboard and visualizations
-- Comprehensive backtesting framework
+This script provides a comprehensive command-line interface for running batch backtests
+on CSV market data files. It supports multiple strategies, date ranges, and detailed
+performance reporting.
 
 Usage Examples:
-    # Advanced ML Strategy Backtesting (500+ features)
-    python main.py --mode backtest --strategy ml --data ./data/BTCUSDT_sample.csv
-    
-    # Real-time Multi-Asset Trading
-    python main.py --mode realtime --symbols BTCUSDT,ETHUSDT --duration 60
-    
-    # Complete System Demo (showcases everything)
-    python main.py --mode demo --advanced
-    
-    # Enhanced Dashboard with ML insights
-    python main.py --mode dashboard --enhanced
-    
-    # Basic CSV Backtesting (legacy mode)
-    python main.py --mode backtest --data ./data/BTCUSDT_sample.csv --strategy market_making
-    
-    # Performance Analysis
-    python main.py --mode analysis --input ./results/backtest_results.json
+    # Single CSV file backtest
+    python main.py --mode backtest --data ./data/historical_data.csv --output ./logs/backtest_results.json
+
+    # Multiple files or date range
+    python main.py --mode backtest --data ./data/ --start-date 2024-01-01 --end-date 2024-01-31 --output ./logs/
+
+    # With specific strategy and parameters
+    python main.py --mode backtest --data ./data/ --strategy market_making --output ./logs/ --config ./config/backtest_config.json
+
+    # Parallel processing for multiple files
+    python main.py --mode backtest --data ./data/ --output ./logs/ --parallel --workers 4
 """
 
 import argparse
-import asyncio
 import sys
 import os
 import json
@@ -49,7 +37,7 @@ import numpy as np
 # Add src directory to path for imports
 sys.path.append(str(Path(__file__).parent / "src"))
 
-# Basic Strategy Imports (for legacy mode)
+# Import HFT Simulator components
 from src.execution.simulator import ExecutionSimulator, BacktestResult
 from src.execution.fill_models import RealisticFillModel, PerfectFillModel
 from src.data.ingestion import DataIngestion
@@ -60,53 +48,6 @@ from src.strategies.liquidity_taking import LiquidityTakingStrategy
 from src.utils.logger import get_logger, setup_main_logger
 from src.utils.helpers import Timer
 from src.utils.constants import OrderSide, OrderType, OrderStatus
-
-# Advanced Feature Imports
-try:
-    # Advanced Strategy Imports
-    from src.strategies.ml_strategy import MLTradingStrategy, MLFeatureEngineer
-    from src.strategies.market_making import MarketMakingConfig
-    from src.strategies.arbitrage_strategy import ArbitrageStrategy
-    
-    # Advanced Engine and Execution
-    from src.engine.order_book import OrderBook
-    from src.execution.fill_models import AdvancedFillModel
-    
-    # Real-time and Data Processing
-    from src.realtime.enhanced_data_feeds import EnhancedDataFeedConfig, create_enhanced_data_feed
-    from src.realtime.trading_system import RealTimeTradingSystem
-    from src.data_ingestion.data_pipeline import DataPipeline
-    from src.data_ingestion.quality_monitor import DataQualityMonitor
-    
-    # Advanced Analytics and Performance
-    from src.performance.portfolio import Portfolio
-    from src.performance.risk_manager import RiskManager, RiskConfig
-    from src.performance.metrics import PerformanceAnalyzer, calculate_all_metrics
-    
-    # Visualization and Reporting
-    from src.visualization.realtime_dashboard import RealTimeDashboard, DashboardConfig
-    from src.visualization.performance_dashboard import PerformanceDashboard
-    from src.visualization.reports import ReportGenerator
-    
-    # ML and Advanced Features
-    from src.ml.feature_store.feature_store import FeatureStore
-    from src.ml.ensemble_models import EnsembleModelManager
-    from src.ml.anomaly_detection import AnomalyDetector
-    
-    # Multi-asset Support
-    from src.assets.core.base_asset import AssetManager
-    from src.assets.crypto.crypto_asset import CryptoAsset
-    from src.assets.options.options_asset import OptionsAsset
-    
-    # Utilities
-    from src.utils.performance_monitor import PerformanceMonitor
-    
-    ADVANCED_FEATURES_AVAILABLE = True
-    
-except ImportError as e:
-    print(f"⚠️  Advanced features not available: {e}")
-    print("🔄 Running in basic mode only")
-    ADVANCED_FEATURES_AVAILABLE = False
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
@@ -641,393 +582,6 @@ class BatchBacktester:
         else:
             # Multiple files in directory
             self.save_individual_results(results, output_path)
-
-
-class UnifiedHFTSystem:
-    """Unified HFT System connecting all advanced features"""
-    
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
-        self.logger = setup_main_logger()
-        
-        if ADVANCED_FEATURES_AVAILABLE:
-            self.performance_monitor = PerformanceMonitor()
-            
-            # System components
-            self.asset_manager = AssetManager()
-            self.feature_store = FeatureStore()
-            self.ensemble_manager = EnsembleModelManager()
-            self.anomaly_detector = AnomalyDetector()
-            self.data_quality_monitor = DataQualityMonitor()
-            self.report_generator = ReportGenerator()
-            
-            # Trading components
-            self.portfolios = {}
-            self.risk_managers = {}
-            self.strategies = {}
-            self.data_feeds = {}
-            self.order_books = {}
-            
-            self.logger.info("🚀 Unified HFT System initialized with ALL advanced features")
-        else:
-            self.logger.warning("⚠️ Advanced features not available - running in basic mode")
-    
-    async def run_advanced_backtest(self, strategy_type: str, data_path: str, 
-                                  symbols: List[str] = None) -> Dict[str, Any]:
-        """Run advanced backtesting with ML strategies and comprehensive analytics"""
-        
-        if not ADVANCED_FEATURES_AVAILABLE:
-            self.logger.error("Advanced features not available for ML backtesting")
-            return {"error": "Advanced features not available"}
-        
-        self.logger.info(f"🧠 Starting Advanced {strategy_type.upper()} Strategy Backtest")
-        
-        if not symbols:
-            symbols = ["BTCUSDT"]  # Default symbol
-        
-        results = {}
-        
-        for symbol in symbols:
-            self.logger.info(f"📊 Processing {symbol}...")
-            
-            try:
-                # Load and prepare data with advanced preprocessing
-                data_pipeline = DataPipeline()
-                raw_data = await data_pipeline.load_data(data_path)
-                
-                # Advanced feature engineering (500+ features)
-                feature_engineer = MLFeatureEngineer()
-                feature_data = feature_engineer.create_features(raw_data)
-                self.logger.info(f"✨ Generated {len(feature_engineer.feature_names)} features")
-                
-                # Store features in feature store
-                await self.feature_store.store_features(symbol, feature_data)
-                
-                # Initialize advanced strategy
-                strategy = self._create_advanced_strategy(strategy_type, symbol)
-                
-                # Initialize advanced portfolio and risk management
-                portfolio = Portfolio(initial_cash=1000000)
-                risk_config = RiskConfig(
-                    max_portfolio_risk=0.02,
-                    max_position_size=50000,
-                    max_drawdown=0.15,
-                    var_confidence=0.99
-                )
-                risk_manager = RiskManager(risk_config)
-                
-                # Run advanced execution simulation
-                order_book = OrderBook(symbol, tick_size=0.01)
-                fill_model = AdvancedFillModel(
-                    fill_probability=0.95,
-                    slippage_model="realistic",
-                    market_impact_factor=0.001
-                )
-                
-                simulator = ExecutionSimulator(
-                    order_book=order_book,
-                    strategy=strategy,
-                    portfolio=portfolio,
-                    risk_manager=risk_manager,
-                    fill_model=fill_model
-                )
-                
-                # Execute backtest with performance monitoring
-                with self.performance_monitor.measure("backtest_execution"):
-                    backtest_result = await simulator.run_advanced_backtest(
-                        feature_data, 
-                        enable_analytics=True,
-                        enable_ml_insights=True
-                    )
-                
-                # Advanced performance analysis
-                analyzer = PerformanceAnalyzer()
-                performance_metrics = analyzer.calculate_all_metrics(
-                    backtest_result.trades,
-                    backtest_result.portfolio_values,
-                    benchmark_returns=None  # Could add benchmark
-                )
-                
-                # Anomaly detection on results
-                anomalies = self.anomaly_detector.detect_anomalies(
-                    backtest_result.portfolio_values
-                )
-                
-                results[symbol] = {
-                    'backtest_result': backtest_result,
-                    'performance_metrics': performance_metrics,
-                    'feature_count': len(feature_engineer.feature_names),
-                    'anomalies_detected': len(anomalies),
-                    'execution_stats': self.performance_monitor.get_stats("backtest_execution")
-                }
-                
-                self.logger.info(f"✅ {symbol} backtest complete: "
-                               f"PnL=${performance_metrics['total_return']:.2f}, "
-                               f"Sharpe={performance_metrics['sharpe_ratio']:.2f}")
-                
-            except Exception as e:
-                self.logger.error(f"Error processing {symbol}: {e}")
-                results[symbol] = {"error": str(e)}
-        
-        return results
-    
-    async def run_realtime_trading(self, symbols: List[str], duration: int = 60):
-        """Run real-time multi-asset trading with advanced features"""
-        
-        if not ADVANCED_FEATURES_AVAILABLE:
-            self.logger.error("Advanced features not available for real-time trading")
-            return {"error": "Advanced features not available"}
-        
-        self.logger.info(f"⚡ Starting Real-time Multi-Asset Trading")
-        self.logger.info(f"📈 Symbols: {', '.join(symbols)}")
-        self.logger.info(f"⏱️  Duration: {duration}s")
-        
-        try:
-            # Initialize real-time trading system
-            trading_system = RealTimeTradingSystem()
-            
-            # Setup enhanced data feeds for each symbol
-            for symbol in symbols:
-                enhanced_config = EnhancedDataFeedConfig(
-                    url="wss://stream.binance.com:9443/stream",
-                    symbols=[symbol],
-                    buffer_size=20000,
-                    max_messages_per_second=2000,
-                    primary_source="binance",
-                    backup_sources=["mock"],
-                    enable_redundancy=True,
-                    enable_data_validation=True,
-                    enable_outlier_detection=True
-                )
-                
-                feed = create_enhanced_data_feed("enhanced_websocket", enhanced_config)
-                await feed.connect()
-                await feed.subscribe([symbol])
-                self.data_feeds[symbol] = feed
-                
-                # Initialize components for each symbol
-                self.order_books[symbol] = OrderBook(symbol, tick_size=0.01)
-                self.portfolios[symbol] = Portfolio(initial_cash=500000)
-                
-                # Advanced ML strategy for real-time trading
-                self.strategies[symbol] = self._create_advanced_strategy("ml", symbol)
-                
-                # Real-time risk management
-                risk_config = RiskConfig(max_position_size=10000, max_portfolio_risk=0.015)
-                self.risk_managers[symbol] = RiskManager(risk_config)
-                
-                self.logger.info(f"🔗 {symbol} real-time components initialized")
-            
-            # Run real-time trading simulation
-            await trading_system.run_multi_asset_trading(
-                symbols=symbols,
-                data_feeds=self.data_feeds,
-                strategies=self.strategies,
-                portfolios=self.portfolios,
-                risk_managers=self.risk_managers,
-                duration=duration
-            )
-            
-            return {"status": "completed", "symbols": symbols, "duration": duration}
-            
-        except Exception as e:
-            self.logger.error(f"Real-time trading error: {e}")
-            return {"error": str(e)}
-    
-    async def run_enhanced_dashboard(self):
-        """Launch enhanced real-time dashboard with all features"""
-        
-        if not ADVANCED_FEATURES_AVAILABLE:
-            self.logger.error("Advanced features not available for enhanced dashboard")
-            # Fall back to basic dashboard from examples
-            try:
-                from examples.run_dashboard import create_enhanced_demo_dashboard
-                dashboard = create_enhanced_demo_dashboard()
-                dashboard.socketio.run(
-                    dashboard.app, 
-                    host="127.0.0.1", 
-                    port=8080, 
-                    debug=True,
-                    use_reloader=False
-                )
-            except Exception as e:
-                print(f"Error running basic dashboard: {e}")
-            return
-        
-        self.logger.info("🖥️ Launching Enhanced Real-time Dashboard")
-        
-        try:
-            config = DashboardConfig(
-                host="127.0.0.1",
-                port=8080,
-                debug=True,
-                update_interval_ms=100,
-                max_data_points=5000,
-                default_symbols=["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"],
-                theme="professional_dark",
-                enable_advanced_charts=True,
-                enable_ml_insights=True,
-                enable_risk_analytics=True
-            )
-            
-            dashboard = RealTimeDashboard(config)
-            
-            # Add advanced features to dashboard
-            dashboard.enable_feature_monitoring(self.feature_store)
-            dashboard.enable_anomaly_detection(self.anomaly_detector)
-            dashboard.enable_performance_analytics()
-            
-            self.logger.info("🚀 Enhanced Dashboard starting at: http://127.0.0.1:8080")
-            self.logger.info("📊 Features: ML Insights, Risk Analytics, Multi-Asset")
-            
-            # Run enhanced dashboard
-            await dashboard.run_enhanced()
-            
-        except Exception as e:
-            self.logger.error(f"Enhanced dashboard error: {e}")
-    
-    async def run_complete_demo(self):
-        """Run complete system demonstration showcasing all features"""
-        
-        self.logger.info("🎬 Running Complete System Demonstration")
-        print("=" * 70)
-        print("🚀 HFT SIMULATOR - COMPLETE FEATURE DEMONSTRATION")
-        print("=" * 70)
-        
-        if not ADVANCED_FEATURES_AVAILABLE:
-            print("⚠️ Advanced features not available - running basic demo")
-            # Run basic demo instead
-            try:
-                backtester = BatchBacktester(BacktestConfig())
-                data_path = create_sample_data()
-                results = backtester.run_batch_backtest(
-                    data_path=data_path,
-                    output_path="./results/basic_demo.json"
-                )
-                print(f"✅ Basic demo completed with {len(results)} results")
-                return {"demo_completed": True, "mode": "basic"}
-            except Exception as e:
-                print(f"❌ Basic demo failed: {e}")
-                return {"demo_completed": False, "error": str(e)}
-        
-        print("📋 Features being demonstrated:")
-        print("   ✨ Advanced ML strategies with 500+ features")
-        print("   ✨ Real-time multi-asset processing")
-        print("   ✨ Professional risk management")
-        print("   ✨ Advanced performance analytics")
-        print("   ✨ Anomaly detection and monitoring")
-        print("   ✨ Enhanced data quality control")
-        print("=" * 70)
-        
-        try:
-            # 1. Advanced Backtesting Demo
-            print("\n🧠 PHASE 1: Advanced ML Strategy Backtesting")
-            print("-" * 50)
-            
-            backtest_results = await self.run_advanced_backtest(
-                strategy_type="ml",
-                data_path="./data/BTCUSDT_sample.csv",
-                symbols=["BTCUSDT"]
-            )
-            
-            for symbol, results in backtest_results.items():
-                if "error" not in results:
-                    metrics = results['performance_metrics']
-                    print(f"📊 {symbol} Results:")
-                    print(f"   💰 Total Return: ${metrics['total_return']:,.2f}")
-                    print(f"   📈 Sharpe Ratio: {metrics['sharpe_ratio']:.2f}")
-                    print(f"   🎯 Features Used: {results['feature_count']}")
-                    print(f"   ⚠️  Anomalies: {results['anomalies_detected']}")
-                else:
-                    print(f"❌ {symbol} failed: {results['error']}")
-            
-            # 2. Real-time Trading Demo (short duration)
-            print("\n⚡ PHASE 2: Real-time Multi-Asset Demo (30s)")
-            print("-" * 50)
-            
-            realtime_results = await self.run_realtime_trading(
-                symbols=["BTCUSDT", "ETHUSDT"],
-                duration=30
-            )
-            print(f"✅ Real-time demo completed: {realtime_results.get('status', 'unknown')}")
-            
-            # 3. Generate Comprehensive Report
-            print("\n📄 PHASE 3: Generating Comprehensive Report")
-            print("-" * 50)
-            
-            report = await self.report_generator.generate_complete_report({
-                'backtest_results': backtest_results,
-                'realtime_results': realtime_results,
-                'system_performance': self.performance_monitor.get_all_stats(),
-                'feature_analysis': await self.feature_store.get_feature_summary()
-            })
-            
-            print(f"📋 Complete report generated: {report['report_path']}")
-            print(f"📊 Total features utilized: {report['total_features']}")
-            print(f"🔍 System components tested: {report['components_tested']}")
-            
-            print("\n🎉 COMPLETE SYSTEM DEMONSTRATION FINISHED!")
-            print("=" * 70)
-            
-            return {
-                'demo_completed': True,
-                'backtest_results': backtest_results,
-                'realtime_results': realtime_results,
-                'report': report
-            }
-            
-        except Exception as e:
-            print(f"❌ Advanced demo failed: {e}")
-            return {"demo_completed": False, "error": str(e)}
-    
-    def _create_advanced_strategy(self, strategy_type: str, symbol: str):
-        """Create advanced strategy instance"""
-        
-        if not ADVANCED_FEATURES_AVAILABLE:
-            # Fall back to basic strategies
-            if strategy_type == "market_making":
-                return SimpleMarketMakingStrategy(symbol)
-            else:
-                return SimpleMomentumStrategy(symbol)
-        
-        if strategy_type == "ml":
-            # Advanced ML strategy with all features
-            return MLTradingStrategy(
-                symbol=symbol,
-                feature_engineer=MLFeatureEngineer(),
-                ensemble_manager=self.ensemble_manager,
-                lookback_periods=[5, 10, 20, 50, 100],
-                prediction_horizon=5,
-                min_confidence=0.65,
-                enable_online_learning=True
-            )
-        
-        elif strategy_type == "market_making":
-            config = MarketMakingConfig(
-                target_spread=0.02,
-                max_inventory=5000,
-                base_quote_size=200,
-                enable_ml_signals=True,
-                volatility_adjustment=True
-            )
-            return MarketMakingStrategy(symbol, config)
-        
-        elif strategy_type == "arbitrage":
-            return ArbitrageStrategy(
-                primary_symbol=symbol,
-                secondary_symbols=[f"{symbol}"],  # Could add related symbols
-                min_profit_bps=5.0,
-                max_position=2000
-            )
-        
-        else:
-            # Default to liquidity taking
-            return LiquidityTakingStrategy(
-                symbol=symbol,
-                signal_threshold=0.01,
-                max_position=3000,
-                order_size=100
-            )
     
     def save_json_results(self, results: List[BacktestResult], output_file: Path):
         """Save results to a single JSON file"""
@@ -1224,11 +778,6 @@ Examples:
         choices=[
             'backtest',
             'create-sample-data', 
-            'realtime',
-            'dashboard', 
-            'demo',
-            'analysis',
-            'ml-backtest',
             'live-simulation',
             'strategy-comparison',
             'optimize',
@@ -1267,41 +816,9 @@ Examples:
     
     parser.add_argument(
         '--strategy',
-        choices=['market_making', 'momentum', 'ml', 'arbitrage', 'liquidity_taking'],
+        choices=['market_making', 'momentum'],
         default='market_making',
         help='Trading strategy to use'
-    )
-    
-    parser.add_argument(
-        '--symbols',
-        type=str,
-        default='BTCUSDT',
-        help='Comma-separated list of symbols for advanced modes'
-    )
-    
-    parser.add_argument(
-        '--duration',
-        type=int,
-        default=60,
-        help='Duration in seconds for real-time modes'
-    )
-    
-    parser.add_argument(
-        '--advanced',
-        action='store_true',
-        help='Enable all advanced features'
-    )
-    
-    parser.add_argument(
-        '--enhanced',
-        action='store_true', 
-        help='Use enhanced/advanced version of the feature'
-    )
-    
-    parser.add_argument(
-        '--input',
-        type=str,
-        help='Input file path (for analysis mode)'
     )
     
     parser.add_argument(
@@ -1380,160 +897,6 @@ Examples:
             logger.info(f"Total results: {len(results)}")
             
             return 0
-        
-        elif args.mode == 'ml-backtest':
-            # Advanced ML backtesting with 500+ features
-            if not ADVANCED_FEATURES_AVAILABLE:
-                print("❌ Advanced features not available for ML backtesting")
-                print("💡 Try basic backtesting instead: --mode backtest")
-                return 1
-            
-            symbols = args.symbols.split(',') if args.symbols else ['BTCUSDT']
-            data_path = args.data or './data/BTCUSDT_sample.csv'
-            
-            print("🧠 Starting Advanced ML Strategy Backtesting...")
-            logger.info(f"ML Backtest - Symbols: {symbols}")
-            
-            # Initialize unified system
-            unified_system = UnifiedHFTSystem({'advanced': True})
-            
-            # Run advanced ML backtest
-            results = asyncio.run(unified_system.run_advanced_backtest(
-                strategy_type='ml',
-                data_path=data_path,
-                symbols=symbols
-            ))
-            
-            print("✅ Advanced ML backtest completed!")
-            
-            # Save results if output specified
-            if args.output:
-                output_path = Path(args.output)
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(output_path, 'w') as f:
-                    json.dump(results, f, indent=2, default=str)
-                print(f"📄 Results saved to: {output_path}")
-            
-            return 0
-        
-        elif args.mode == 'realtime':
-            # Real-time multi-asset trading
-            symbols = args.symbols.split(',') if args.symbols else ['BTCUSDT']
-            duration = args.duration
-            
-            print(f"⚡ Starting Real-time Trading Demo...")
-            print(f"📈 Symbols: {', '.join(symbols)}")
-            print(f"⏱️  Duration: {duration}s")
-            
-            # Initialize unified system
-            unified_system = UnifiedHFTSystem({'realtime': True})
-            
-            # Run real-time trading
-            results = asyncio.run(unified_system.run_realtime_trading(
-                symbols=symbols,
-                duration=duration
-            ))
-            
-            print("✅ Real-time trading demo completed!")
-            print(f"📊 Results: {results.get('status', 'unknown')}")
-            
-            return 0
-        
-        elif args.mode == 'dashboard':
-            # Launch enhanced dashboard
-            print("🖥️ Launching Enhanced Real-time Dashboard...")
-            
-            # Initialize unified system
-            unified_system = UnifiedHFTSystem({'dashboard': True})
-            
-            # Run enhanced dashboard
-            asyncio.run(unified_system.run_enhanced_dashboard())
-            
-            return 0
-        
-        elif args.mode == 'demo':
-            # Complete system demonstration
-            print("🎬 Starting Complete System Demonstration...")
-            
-            # Initialize unified system with all features
-            unified_system = UnifiedHFTSystem({'demo': True, 'advanced': args.advanced})
-            
-            # Run complete demo
-            results = asyncio.run(unified_system.run_complete_demo())
-            
-            if results.get('demo_completed'):
-                print("🎉 Complete demo finished successfully!")
-                
-                # Save demo results if output specified
-                if args.output:
-                    output_path = Path(args.output)
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(output_path, 'w') as f:
-                        json.dump(results, f, indent=2, default=str)
-                    print(f"📄 Demo results saved to: {output_path}")
-            else:
-                print(f"❌ Demo failed: {results.get('error', 'unknown')}")
-                return 1
-            
-            return 0
-        
-        elif args.mode == 'analysis':
-            # Performance analysis of results
-            if not args.input:
-                print("Error: --input is required for analysis mode")
-                print("Specify path to backtest results file or directory")
-                return 1
-            
-            print(f"📊 Analyzing results from: {args.input}")
-            
-            try:
-                input_path = Path(args.input)
-                
-                if input_path.is_file() and input_path.suffix == '.json':
-                    # Single results file
-                    with open(input_path, 'r') as f:
-                        data = json.load(f)
-                    
-                    if 'backtest_summary' in data:
-                        summary = data['backtest_summary']
-                        print("\n📋 BACKTEST ANALYSIS")
-                        print("=" * 50)
-                        print(f"Total Backtests: {summary.get('total_backtests', 'N/A')}")
-                        print(f"Total P&L: ${summary.get('total_pnl', 0):,.2f}")
-                        print(f"Total Trades: {summary.get('total_trades', 0):,}")
-                        print(f"Average Fill Rate: {summary.get('avg_fill_rate', 0):.1%}")
-                        print("=" * 50)
-                    else:
-                        print("⚠️ File does not contain backtest summary data")
-                
-                elif input_path.is_dir():
-                    # Directory of results files
-                    json_files = list(input_path.glob("*.json"))
-                    print(f"Found {len(json_files)} result files")
-                    
-                    for json_file in json_files[:5]:  # Show first 5
-                        print(f"📄 {json_file.name}")
-                    
-                    if len(json_files) > 5:
-                        print(f"... and {len(json_files) - 5} more files")
-                
-                else:
-                    print(f"❌ Invalid input path: {input_path}")
-                    return 1
-                
-                print("✅ Analysis completed!")
-                
-            except Exception as e:
-                print(f"❌ Analysis failed: {e}")
-                return 1
-            
-            return 0
-        
-        else:
-            # Handle other future modes
-            print(f"🚧 Mode '{args.mode}' is not yet implemented")
-            print("Available modes: backtest, create-sample-data, ml-backtest, realtime, dashboard, demo, analysis")
-            return 1
         
     except KeyboardInterrupt:
         logger.info("Batch backtesting interrupted by user")

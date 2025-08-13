@@ -53,7 +53,7 @@ Market Data      Price Discovery     Feature Eng.    Position Limits   Visualiza
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/your-username/hft-simulator.git
 cd hft-simulator
 
 # Create virtual environment
@@ -65,6 +65,67 @@ pip install -r requirements.txt
 
 # Install in development mode
 pip install -e .
+```
+
+### 🎯 Unified Command Interface
+
+The HFT Simulator now provides a **single unified entry point** through `main.py` that integrates ALL features:
+
+#### **Basic Usage (No Setup Required)**
+
+```bash
+# Create sample data for testing
+python main.py --mode create-sample-data
+
+# Run basic CSV backtesting
+python main.py --mode backtest --data ./data/ --output ./results/
+
+# Analyze results
+python main.py --mode analysis --input ./results/backtest_summary.json
+```
+
+#### **Advanced Features (500+ ML Features)**
+
+```bash
+# Advanced ML Strategy Backtesting with 500+ features
+python main.py --mode ml-backtest --symbols BTCUSDT --data ./data/BTCUSDT_sample.csv
+
+# Real-time Multi-Asset Trading Simulation
+python main.py --mode realtime --symbols BTCUSDT,ETHUSDT --duration 60
+
+# Enhanced Dashboard with ML Insights
+python main.py --mode dashboard --enhanced
+
+# Complete System Demonstration (showcases everything)
+python main.py --mode demo --advanced
+```
+
+#### **Available Modes**
+
+| Mode | Description | Advanced Features |
+|------|-------------|------------------|
+| `create-sample-data` | Generate test datasets | ❌ |
+| `backtest` | Basic CSV backtesting | ❌ |
+| `ml-backtest` | Advanced ML strategies | ✅ 500+ features |
+| `realtime` | Live multi-asset trading | ✅ Enhanced feeds |
+| `dashboard` | Interactive web interface | ✅ ML insights |
+| `demo` | Complete system showcase | ✅ All features |
+| `analysis` | Performance analysis | ❌ |
+
+> **Note**: Advanced modes automatically fall back to basic functionality if ML modules aren't installed.
+
+### 🎮 Interactive Examples
+
+```bash
+# Quick Demo (2 minutes)
+python main.py --mode demo
+
+# Extended Demo with all advanced features (5 minutes)
+python main.py --mode demo --advanced --output ./demo_results.json
+
+# Real-time Dashboard (opens web browser)
+python main.py --mode dashboard
+# Then visit: http://127.0.0.1:8080
 ```
 
 ## 🖥️ Real-Time Dashboard
