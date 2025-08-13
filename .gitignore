@@ -129,3 +129,14 @@ docker-compose.override.yml
 # Backup files
 *.bak
 *.backup
+
+# Development and temp files
+.kilocode/
+.benchmarks/
+static/
+get-pip.py
+acli_*
+Untitled*.ipynb
+*_summary.json
+*_results.json
+config.json
